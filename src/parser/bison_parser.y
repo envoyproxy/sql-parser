@@ -144,6 +144,23 @@ int yyerror(YYLTYPE* llocp, SQLParserResult* result, yyscan_t scanner, const cha
 %destructor { free( ($$.name) ); free( ($$.schema) ); } <table_name>
 %destructor { free( ($$.name) ); } <db_name>
 %destructor { free( ($$) ); } <sval>
+// <str_vec> elements are char* allocated by the lexer with strdup() (unquoted
+// IDENTIFIER) or hsql::substr() (quoted IDENTIFIER), both backed by malloc.
+// They must be released with free(); calling delete on them is undefined
+// behavior. Under tcmalloc + -fsized-deallocation that UB becomes a freelist
+// corruption that crashes after enough error-recovery invocations.
+// See envoyproxy/envoy#36471.
+%destructor {
+	if (($$) != nullptr) {
+		for (auto ptr : *($$)) {
+			free(ptr);
+		}
+	}
+	delete ($$);
+} <str_vec>
+
+// The remaining vector types hold pointers to heap objects allocated with new
+// in their respective grammar actions; delete is correct for them.
 %destructor {
 	if (($$) != nullptr) {
 		for (auto ptr : *($$)) {
@@ -151,7 +168,7 @@ int yyerror(YYLTYPE* llocp, SQLParserResult* result, yyscan_t scanner, const cha
 		}
 	}
 	delete ($$);
-} <str_vec> <table_vec> <column_vec> <update_vec> <expr_vec> <order_vec> <stmt_vec>
+} <table_vec> <column_vec> <update_vec> <expr_vec> <order_vec> <stmt_vec>
 %destructor { delete ($$); } <*>
 
 
@@ -171,7 +188,7 @@ int yyerror(YYLTYPE* llocp, SQLParserResult* result, yyscan_t scanner, const cha
 %token DOUBLE ESCAPE EXCEPT EXISTS EXTRACT GLOBAL HAVING IMPORT
 %token INSERT ISNULL OFFSET RENAME SCHEMA SELECT SORTED
 %token TABLES UNIQUE UNLOAD UPDATE VALUES AFTER ALTER CROSS
-%token DELTA FLOAT GROUP INDEX INNER LIMIT LOCAL MERGE MINUS ORDER
+%token FLOAT GROUP INDEX INNER LIMIT LOCAL MERGE MINUS ORDER
 %token OUTER RIGHT TABLE UNION USING WHERE CALL CASE CHAR DATE
 %token DESC DROP ELSE FILE FROM FULL HASH HINT INTO JOIN
 %token LEFT LIKE LOAD LONG NULL PLAN SHOW TEXT THEN TIME
