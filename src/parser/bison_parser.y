@@ -35,6 +35,7 @@ int yyerror(YYLTYPE* llocp, SQLParserResult* result, yyscan_t scanner, const cha
 %code requires {
 // %code requires block
 
+#include <stdint.h>
 #include "../../include/sqlparser/statements.h"
 #include "../../include/sqlparser/SQLParserResult.h"
 #include "parser_typedef.h"

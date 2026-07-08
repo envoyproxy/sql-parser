@@ -55,6 +55,7 @@ extern int hsql_debug;
 
 // %code requires block
 
+#include <stdint.h>
 #include "../../include/sqlparser/statements.h"
 #include "../../include/sqlparser/SQLParserResult.h"
 #include "parser_typedef.h"
