@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdint.h>
 #include "../../include/sqlparser/statements.h"
 
 namespace hsql {
