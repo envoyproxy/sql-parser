@@ -4,6 +4,11 @@
 
 #include "thirdparty/microtest/microtest.h"
 
+#include <atomic>
+#include <string>
+#include <thread>
+#include <vector>
+
 #include "SQLParser.h"
 #include "util/sqlhelper.h"
 
@@ -229,6 +234,41 @@ TEST(StringLengthTest) {
   ASSERT_EQ(result.getStatement(0)->stringLength, 18);
   ASSERT_EQ(result.getStatement(1)->stringLength, 28);
   ASSERT_EQ(result.getStatement(2)->stringLength, 21);
+}
+
+// SQLParser::parse is a static function and must be safe to call from several
+// threads at once. String literals are accumulated by the lexer in a buffer, so
+// parse queries with distinct literals concurrently and check that every thread
+// gets back exactly its own literal.
+TEST(ConcurrentStringLiteralTest) {
+  const int kThreads = 4;
+  const int kIterations = 500;
+  std::atomic<int> failures(0);
+  std::vector<std::thread> threads;
+  for (int t = 0; t < kThreads; ++t) {
+    threads.emplace_back([t, &failures]() {
+      const std::string literal(100, static_cast<char>('a' + t));
+      const std::string query = "SELECT * FROM students WHERE name = '" + literal + "';";
+      for (int i = 0; i < kIterations; ++i) {
+        SQLParserResult result;
+        SQLParser::parse(query, &result);
+        if (!result.isValid() || result.size() != 1) {
+          ++failures;
+          continue;
+        }
+        const SelectStatement* stmt = (const SelectStatement*) result.getStatement(0);
+        if (stmt->whereClause == nullptr || stmt->whereClause->expr2 == nullptr ||
+            stmt->whereClause->expr2->name == nullptr ||
+            literal != stmt->whereClause->expr2->name) {
+          ++failures;
+        }
+      }
+    });
+  }
+  for (std::thread& thread : threads) {
+    thread.join();
+  }
+  ASSERT_EQ(failures.load(), 0);
 }
 
 TEST_MAIN();

@@ -17,7 +17,11 @@
 
 #define TOKEN(name) { return SQL_##name; }
 
-static std::stringstream strbuf;
+// Buffer used to accumulate the contents of a single-quoted string literal.
+// It is thread_local because SQLParser::parse has no instance state and may be
+// called concurrently from multiple threads; a process-global buffer would be a
+// data race on the string-literal path.
+static thread_local std::stringstream strbuf;
 
 %}
 %x singlequotedstring

@@ -131,7 +131,7 @@ test: $(TEST_BUILD)
 
 $(TEST_BUILD): $(TEST_ALL) $(LIB_BUILD)
 	@mkdir -p $(BIN)/
-	$(CXX) $(TEST_CFLAGS) $(TEST_CPP) -o $(TEST_BUILD) -lsqlparser -lstdc++
+	$(CXX) $(TEST_CFLAGS) $(TEST_CPP) -o $(TEST_BUILD) -lsqlparser -lstdc++ -pthread
 
 test_example:
 	$(GMAKE) -C example/
